@@ -1,0 +1,21 @@
+{
+  "name": "@hoshi/profile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "从 hoshi.yml 加载的命名插件组合。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/runtime": "*"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@hoshi/llm-openai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenAI 兼容协议的模型适配器。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/llm": "*"
+  }
+}

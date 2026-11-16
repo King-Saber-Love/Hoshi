@@ -1,0 +1,22 @@
+{
+  "name": "@hoshi/approvals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "工具执行的权限与审批钩子。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/runtime": "*",
+    "@hoshi/tools": "*"
+  }
+}

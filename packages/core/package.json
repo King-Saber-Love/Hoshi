@@ -1,0 +1,24 @@
+{
+  "name": "@hoshi/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent 循环、turn/step 调度，以及提示词与工具 schema 组装。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/runtime": "*",
+    "@hoshi/session": "*",
+    "@hoshi/llm": "*",
+    "@hoshi/tools": "*"
+  }
+}

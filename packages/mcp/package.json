@@ -1,0 +1,22 @@
+{
+  "name": "@hoshi/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP 客户端，支持 stdio 和 HTTP。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/tools": "*",
+    "@hoshi/runtime": "*"
+  }
+}

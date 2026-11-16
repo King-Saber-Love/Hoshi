@@ -1,0 +1,21 @@
+{
+  "name": "@hoshi/tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "工具管线：pre-execute、execute、post-execute。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/runtime": "*"
+  }
+}

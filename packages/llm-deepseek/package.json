@@ -1,0 +1,21 @@
+{
+  "name": "@hoshi/llm-deepseek",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DeepSeek Messages 适配器：原生 fetch 与 SSE。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/llm": "*"
+  }
+}

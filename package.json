@@ -1,0 +1,27 @@
+{
+  "name": "hoshi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hoshi 是一套插件化的 Agent 运行时：会话日志、工具管线、可替换的模型适配器；一个核心，外挂 CLI、Web 和桌面端。",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "cli": "node apps/cli/src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/King-Saber-Love/Hoshi.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/King-Saber-Love/Hoshi/issues"
+  },
+  "homepage": "https://github.com/King-Saber-Love/Hoshi#readme"
+}

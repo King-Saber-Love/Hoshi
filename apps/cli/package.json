@@ -1,0 +1,28 @@
+{
+  "name": "@hoshi/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hoshi 的命令行壳。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/runtime": "*",
+    "@hoshi/core": "*",
+    "@hoshi/session": "*",
+    "@hoshi/profile": "*",
+    "@hoshi/llm-deepseek": "*"
+  },
+  "bin": {
+    "hoshi": "./src/index.js"
+  }
+}

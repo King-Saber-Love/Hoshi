@@ -1,0 +1,22 @@
+{
+  "name": "@hoshi/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hoshi 的 Electron 宿主。这是壳，不是插件。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/core": "*",
+    "@hoshi/runtime": "*"
+  }
+}

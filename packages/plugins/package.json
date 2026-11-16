@@ -1,0 +1,22 @@
+{
+  "name": "@hoshi/plugins",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "内置工具插件，如 shell 和文件系统。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/runtime": "*",
+    "@hoshi/tools": "*"
+  }
+}

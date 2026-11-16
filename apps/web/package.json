@@ -1,0 +1,22 @@
+{
+  "name": "@hoshi/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hoshi 的 Web 壳。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hoshi/core": "*",
+    "@hoshi/runtime": "*"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@hoshi/session",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "只追加的事件源会话日志，历史从日志派生。",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}
