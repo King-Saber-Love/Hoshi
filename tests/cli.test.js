@@ -150,3 +150,9 @@ test("模型报错时把错误打到标准错误，退出码为 2", async () => 
   assert.equal(captured.captured().stdout, "");
   assert.match(captured.captured().stderr, /invalid api key|401/);
 });
+
+test("parseArgs 能识别 --no-tools", () => {
+  const args = parseArgs(["--no-tools", "你好"]);
+  assert.equal(args.noTools, true);
+  assert.equal(args.message, "你好");
+});

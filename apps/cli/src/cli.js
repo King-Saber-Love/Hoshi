@@ -9,6 +9,7 @@ import { createContext } from "@hoshi/runtime";
 import { createAgent } from "@hoshi/core";
 import { SESSION_EVENT } from "@hoshi/session";
 import { tools } from "@hoshi/tools";
+import { shellPlugin, filesystemPlugin } from "@hoshi/plugins";
 import { llmDeepseek } from "@hoshi/llm-deepseek";
 
 export const USAGE = `用法: hoshi [选项] <消息>
@@ -19,9 +20,12 @@ export const USAGE = `用法: hoshi [选项] <消息>
   -h, --help          显示帮助
   --model <名称>      模型，默认 deepseek-flash
   --system <文本>     系统提示词
+  --no-tools          不挂载内置 shell / 文件系统工具
 
 环境变量:
   HOSHI_DEEPSEEK_API_KEY   DeepSeek API 密钥（也可写在当前目录的 .env 里）
+
+默认会挂上 shell、read、write、edit、list，工作区是当前目录。还没有审批，也不是完整沙箱。
 
 示例:
   npm run cli -- "你好"
@@ -32,6 +36,7 @@ export const USAGE = `用法: hoshi [选项] <消息>
  * @property {boolean} help
  * @property {string | undefined} model
  * @property {string | undefined} system
+ * @property {boolean} noTools
  * @property {string} message  剩余参数用空格拼成的用户消息
  */
 
@@ -41,7 +46,7 @@ export const USAGE = `用法: hoshi [选项] <消息>
  * @returns {CliArgs}
  */
 export function parseArgs(argv) {
-  const args = { help: false, model: undefined, system: undefined, message: "" };
+  const args = { help: false, model: undefined, system: undefined, noTools: false, message: "" };
   const rest = [];
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -49,6 +54,11 @@ export function parseArgs(argv) {
 
     if (token === "--help" || token === "-h") {
       args.help = true;
+      continue;
+    }
+
+    if (token === "--no-tools") {
+      args.noTools = true;
       continue;
     }
 
@@ -207,6 +217,10 @@ export async function runCli(io) {
 
   const ctx = createContext();
   ctx.plugin(tools());
+  if (!args.noTools) {
+    ctx.plugin(shellPlugin({ workspace: io.cwd }));
+    ctx.plugin(filesystemPlugin({ workspace: io.cwd }));
+  }
   ctx.plugin(llmDeepseek({
     apiKey,
     model: args.model,
