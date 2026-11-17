@@ -20,6 +20,7 @@
     "@hoshi/core": "*",
     "@hoshi/session": "*",
     "@hoshi/profile": "*",
+    "@hoshi/tools": "*",
     "@hoshi/llm-deepseek": "*"
   },
   "bin": {

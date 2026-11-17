@@ -1,5 +1,5 @@
 /**
- * CLI 的实际逻辑：解析参数、读 .env、挂上运行时和 DeepSeek 适配器、跑一轮对话。
+ * CLI 的实际逻辑：解析参数、读 .env、挂上运行时、工具管线和 DeepSeek 适配器、跑一轮对话。
  * 入口 index.js 只负责把进程的 argv / env / 标准流传进来，方便测试时注入假的 fetch。
  */
 
@@ -8,6 +8,7 @@ import path from "node:path";
 import { createContext } from "@hoshi/runtime";
 import { createAgent } from "@hoshi/core";
 import { SESSION_EVENT } from "@hoshi/session";
+import { tools } from "@hoshi/tools";
 import { llmDeepseek } from "@hoshi/llm-deepseek";
 
 export const USAGE = `用法: hoshi [选项] <消息>
@@ -205,6 +206,7 @@ export async function runCli(io) {
   }
 
   const ctx = createContext();
+  ctx.plugin(tools());
   ctx.plugin(llmDeepseek({
     apiKey,
     model: args.model,
