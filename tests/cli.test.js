@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { parseArgs, applyEnvFile, resolveMessage, runCli, USAGE } from "../apps/cli/src/cli.js";
+import { parseArgs, applyEnvFile, resolveMessage, runCli, USAGE, applyCliPluginFlags } from "../apps/cli/src/cli.js";
+import { createDefaultProfile } from "@hoshi/profile";
 
 function sseText(text) {
   const events = [
@@ -19,17 +20,20 @@ function sseText(text) {
     .join("\n\n")}\n\n`;
 }
 
-function fakeFetch(text) {
-  return async () => ({
-    ok: true,
-    status: 200,
-    body: new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(sseText(text)));
-        controller.close();
-      },
-    }),
-  });
+function fakeFetch(text, onRequest) {
+  return async (url, init) => {
+    if (onRequest) onRequest(url, init);
+    return {
+      ok: true,
+      status: 200,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(sseText(text)));
+          controller.close();
+        },
+      }),
+    };
+  };
 }
 
 function io(overrides = {}) {
@@ -164,7 +168,79 @@ test("parseArgs 能识别 --no-approvals 和 --yes", () => {
   assert.equal(args.message, "你好");
 });
 
-test("USAGE 会说明审批相关选项", () => {
+test("parseArgs 能识别 --profile 和 --profile=", () => {
+  assert.equal(parseArgs(["--profile", "./hoshi.yml", "你好"]).profile, "./hoshi.yml");
+  assert.equal(parseArgs(["--profile=custom.yml", "你好"]).profile, "custom.yml");
+  assert.throws(() => parseArgs(["--profile"]), /--profile 后面需要一个值/);
+});
+
+test("USAGE 会说明审批相关选项和 --profile", () => {
   assert.match(USAGE, /--no-approvals/);
   assert.match(USAGE, /--yes/);
+  assert.match(USAGE, /--profile/);
+});
+
+test("applyCliPluginFlags 会按开关去掉对应插件", () => {
+  const profile = applyCliPluginFlags(createDefaultProfile(), { noTools: true, noApprovals: true });
+  assert.deepEqual(profile.plugins.map((entry) => entry.plugin), ["tools", "llm-deepseek"]);
+});
+
+test("当前目录的 hoshi.yml 会提供 system，--system 可以覆盖它", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "hoshi-cli-"));
+  await writeFile(path.join(cwd, "hoshi.yml"), "system: 来自 profile\nplugins:\n  - plugin: tools\n  - plugin: llm-deepseek\n", "utf8");
+
+  let fromProfile;
+  const captured = io({
+    argv: ["你好"],
+    cwd,
+    env: { HOSHI_DEEPSEEK_API_KEY: "test-key" },
+    fetch: fakeFetch("ok", (_url, init) => {
+      fromProfile = JSON.parse(init.body);
+    }),
+  });
+  assert.equal(await runCli(captured), 0);
+  assert.equal(fromProfile.system, "来自 profile");
+
+  let fromFlag;
+  const overridden = io({
+    argv: ["--system", "来自命令行", "你好"],
+    cwd,
+    env: { HOSHI_DEEPSEEK_API_KEY: "test-key" },
+    fetch: fakeFetch("ok", (_url, init) => {
+      fromFlag = JSON.parse(init.body);
+    }),
+  });
+  assert.equal(await runCli(overridden), 0);
+  assert.equal(fromFlag.system, "来自命令行");
+});
+
+test("--profile 指向不存在的文件时以用法错误退出", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "hoshi-cli-"));
+  const captured = io({
+    argv: ["--profile", "missing.yml", "你好"],
+    cwd,
+    env: { HOSHI_DEEPSEEK_API_KEY: "test-key" },
+    fetch: async () => {
+      throw new Error("不该发请求");
+    },
+  });
+  const code = await runCli(captured);
+  assert.equal(code, 1);
+  assert.match(captured.captured().stderr, /找不到 profile/);
+});
+
+test("非法的 hoshi.yml 会以用法错误退出", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "hoshi-cli-"));
+  await writeFile(path.join(cwd, "hoshi.yml"), "plugins: {\n", "utf8");
+  const captured = io({
+    argv: ["你好"],
+    cwd,
+    env: { HOSHI_DEEPSEEK_API_KEY: "test-key" },
+    fetch: async () => {
+      throw new Error("不该发请求");
+    },
+  });
+  const code = await runCli(captured);
+  assert.equal(code, 1);
+  assert.match(captured.captured().stderr, /无法解析 profile YAML/);
 });

@@ -1,0 +1,9 @@
+# Hoshi 的默认插件组合。改这一份就能增减插件，不必改 CLI 代码。
+# 命令行的 --model、--system、--no-tools、--no-approvals、--yes 仍会覆盖这里。
+name: default
+plugins:
+  - plugin: tools
+  - plugin: approvals
+  - plugin: shell
+  - plugin: filesystem
+  - plugin: llm-deepseek

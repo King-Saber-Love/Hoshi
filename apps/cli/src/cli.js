@@ -1,5 +1,5 @@
 /**
- * CLI 的实际逻辑：解析参数、读 .env、挂上运行时、工具管线、审批和 DeepSeek 适配器、跑一轮对话。
+ * CLI 的实际逻辑：解析参数、读 .env、按 profile 挂插件、跑一轮对话。
  * 入口 index.js 只负责把进程的 argv / env / 标准流传进来，方便测试时注入假的 fetch。
  */
 
@@ -12,15 +12,22 @@ import { tools } from "@hoshi/tools";
 import { approvals, createTerminalPrompt } from "@hoshi/approvals";
 import { shellPlugin, filesystemPlugin } from "@hoshi/plugins";
 import { llmDeepseek } from "@hoshi/llm-deepseek";
+import {
+  applyProfile,
+  createDefaultProfile,
+  findProfile,
+  loadProfile,
+} from "@hoshi/profile";
 
 export const USAGE = `用法: hoshi [选项] <消息>
 
-跑一轮对话：把用户消息交给已挂载的 DeepSeek 适配器，把助手回复打印到标准输出。
+跑一轮对话：把用户消息交给已挂载的模型适配器，把助手回复打印到标准输出。
 
 选项:
   -h, --help          显示帮助
-  --model <名称>      模型，默认 deepseek-flash
-  --system <文本>     系统提示词
+  --model <名称>      模型，默认 deepseek-flash，或 profile 里写的 model
+  --system <文本>     系统提示词，覆盖 profile 里的 system
+  --profile <路径>    使用指定的 hoshi.yml；省略时读当前目录的 hoshi.yml，没有则用内置默认组合
   --no-tools          不挂载内置 shell / 文件系统工具
   --no-approvals      不挂载审批插件（shell / write / edit 会直接执行）
   --yes               自动批准本次运行中的审批（危险）
@@ -37,10 +44,23 @@ shell、write、edit 在执行前会询问；标准输入不是终端时，没�
 `;
 
 /**
+ * CLI 壳提供的短名对照表。profile 只认名字，不直接依赖这些包。
+ * 新增一个内置短名时改这里；项目外的插件直接在 hoshi.yml 里写模块路径即可。
+ */
+export const CLI_PLUGIN_CATALOG = {
+  tools,
+  approvals,
+  shell: shellPlugin,
+  filesystem: filesystemPlugin,
+  "llm-deepseek": llmDeepseek,
+};
+
+/**
  * @typedef {object} CliArgs
  * @property {boolean} help
  * @property {string | undefined} model
  * @property {string | undefined} system
+ * @property {string | undefined} profile
  * @property {boolean} noTools
  * @property {boolean} noApprovals
  * @property {boolean} yes
@@ -57,6 +77,7 @@ export function parseArgs(argv) {
     help: false,
     model: undefined,
     system: undefined,
+    profile: undefined,
     noTools: false,
     noApprovals: false,
     yes: false,
@@ -108,6 +129,16 @@ export function parseArgs(argv) {
     }
     if (token === "--system") {
       args.system = requireValue(argv, i, token);
+      i += 1;
+      continue;
+    }
+
+    if (token.startsWith("--profile=")) {
+      args.profile = token.slice("--profile=".length);
+      continue;
+    }
+    if (token === "--profile") {
+      args.profile = requireValue(argv, i, token);
       i += 1;
       continue;
     }
@@ -242,25 +273,47 @@ export async function runCli(io) {
     return 2;
   }
 
-  const ctx = createContext();
-  ctx.plugin(tools());
-  if (!args.noApprovals) {
-    const prompt = args.yes
-      ? async () => "allowed-once"
-      : (typeof io.prompt === "function" ? io.prompt : createTerminalPrompt(io.stdin, io.stderr));
-    ctx.plugin(approvals({ prompt }));
+  let profile;
+  try {
+    profile = await resolveCliProfile(io, args);
+  } catch (error) {
+    io.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
   }
-  if (!args.noTools) {
-    ctx.plugin(shellPlugin({ workspace: io.cwd }));
-    ctx.plugin(filesystemPlugin({ workspace: io.cwd }));
-  }
-  ctx.plugin(llmDeepseek({
-    apiKey,
-    model: args.model,
-    fetch: io.fetch,
-  }));
+  profile = applyCliPluginFlags(profile, args);
 
-  const agent = createAgent(ctx, { system: args.system });
+  const ctx = createContext();
+  const prompt = args.yes
+    ? async () => "allowed-once"
+    : (typeof io.prompt === "function" ? io.prompt : createTerminalPrompt(io.stdin, io.stderr));
+
+  try {
+    await applyProfile(ctx, profile, {
+      catalog: CLI_PLUGIN_CATALOG,
+      configure(name, config) {
+        if (name === "approvals") {
+          return { ...config, prompt: config.prompt ?? prompt };
+        }
+        if (name === "shell" || name === "filesystem") {
+          return { ...config, workspace: config.workspace ?? io.cwd };
+        }
+        if (name === "llm-deepseek") {
+          return {
+            ...config,
+            apiKey,
+            fetch: io.fetch,
+            model: args.model ?? config.model ?? profile.model,
+          };
+        }
+        return config;
+      },
+    });
+  } catch (error) {
+    io.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 2;
+  }
+
+  const agent = createAgent(ctx, { system: args.system ?? profile.system });
 
   try {
     await agent.runTurn(input);
@@ -281,6 +334,40 @@ export async function runCli(io) {
   }
 
   return 0;
+}
+
+/**
+ * --profile 优先；否则读当前目录的 hoshi.yml；再没有就用内置默认组合。
+ * @param {CliIo} io
+ * @param {CliArgs} args
+ */
+async function resolveCliProfile(io, args) {
+  if (args.profile) {
+    const target = path.isAbsolute(args.profile) ? args.profile : path.resolve(io.cwd, args.profile);
+    return loadProfile(target);
+  }
+  const found = await findProfile(io.cwd);
+  if (found) return loadProfile(found);
+  return createDefaultProfile({ workspace: io.cwd });
+}
+
+/**
+ * 命令行开关覆盖 profile：去掉对应插件，不改配置文件。
+ * @param {import("@hoshi/profile").HoshiProfile} profile
+ * @param {CliArgs} args
+ */
+export function applyCliPluginFlags(profile, args) {
+  const blocked = new Set();
+  if (args.noApprovals) blocked.add("approvals");
+  if (args.noTools) {
+    blocked.add("shell");
+    blocked.add("filesystem");
+  }
+  if (blocked.size === 0) return profile;
+  return {
+    ...profile,
+    plugins: profile.plugins.filter((entry) => !blocked.has(entry.plugin)),
+  };
 }
 
 /**

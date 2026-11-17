@@ -26,6 +26,8 @@ npm run cli -- "你好"
 
 默认会挂上 `shell`、`read`、`write`、`edit`、`list`。其中 `shell`、`write`、`edit` 在执行前会询问；可用 `--yes` 自动批准，或 `--no-approvals` 跳过审批（工具会直接执行）。这只是审批，不是完整沙箱。
 
+要增减插件，改仓库根目录的 `hoshi.yml` 即可，不必改 CLI 代码。也可用 `--profile 路径` 指定另一份配置。没有这个文件时，CLI 会使用内置的默认组合。
+
 ## 仓库结构
 
 ```text
@@ -46,6 +48,7 @@ apps/
   web/             Web 壳
   desktop/         Electron 宿主（壳，不是插件）
 tests/             跨包冒烟测试
+hoshi.yml          默认插件组合
 ```
 
 ## 许可
