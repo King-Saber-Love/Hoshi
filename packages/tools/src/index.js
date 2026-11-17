@@ -4,11 +4,20 @@
  *
  * 这是一个插件。先 ctx.plugin(tools()) 挂上服务，再用 registerTool 登记工具。
  * 核心循环通过 ctx.get("tools") 拿到 { list, run }：list 提供给模型看的 schema，
- * run 执行一次调用。审批（ask）以后由 approvals 插件在 pre-execute 里接入。
+ * run 执行一次调用。
+ *
+ * pre-execute 可以返回 allow / deny / ask。遇到 ask 时，管线会去找名为
+ * "approvals" 的服务，把它收成 allow 或 deny；没有这个服务就拒绝（fail closed）。
  */
 
 /** 挂到上下文上的服务名，与 @hoshi/core 的 TOOLS_SERVICE 相同。 */
 export const TOOLS_SERVICE = "tools";
+
+/**
+ * 审批服务的名字。工具包不依赖 @hoshi/approvals，只按这个名字查找，
+ * 和官方管线用 ctx.get("approval") 是同一类做法。
+ */
+export const APPROVALS_SERVICE = "approvals";
 
 /** 管线三个阶段对应的事件名，都走已有的 on / emit / waterfall。 */
 export const TOOL_EVENT = {
@@ -31,9 +40,9 @@ export const TOOL_EVENT = {
  * @property {unknown} [args]  arguments 的别名，兼容较早的调用形状
  *
  * @typedef {object} PreToolDecision
- * @property {"allow" | "deny"} kind
- * @property {string} [reason]  kind 为 deny 时的原因
- * @property {unknown} [arguments]  允许时可以改写后交给工具的参数
+ * @property {"allow" | "deny" | "ask"} kind
+ * @property {string} [reason]  kind 为 deny 或 ask 时的原因
+ * @property {unknown} [arguments]  允许或询问时可以改写后交给工具的参数
  * @property {ToolCall} [call]
  *
  * @typedef {object} PostToolDecision
@@ -144,11 +153,16 @@ async function runRegisteredTool(ctx, registry, call) {
   const originalArgs = call.arguments !== undefined ? call.arguments : call.args;
   const args = originalArgs === undefined ? {} : originalArgs;
 
-  const pre = await ctx.waterfall(TOOL_EVENT.PRE_EXECUTE, {
+  let pre = await ctx.waterfall(TOOL_EVENT.PRE_EXECUTE, {
     kind: "allow",
     call,
     arguments: args,
   });
+
+  // ask 不是最终决定，要先交给审批服务收成 allow 或 deny。
+  if (isAsk(pre)) {
+    pre = await resolveAsk(ctx, pre, call, args);
+  }
 
   if (isDeny(pre)) {
     throw new Error(denyReason(pre, call.name));
@@ -175,6 +189,51 @@ async function runRegisteredTool(ctx, registry, call) {
     return post.result;
   }
   return rawResult;
+}
+
+/**
+ * 把 pre-execute 的 ask 收成 allow 或 deny。
+ * 没有挂审批服务、应答通道不可用、用户拒绝，都是否决，不会默认放行。
+ * @param {import("@hoshi/runtime").HoshiContext} ctx
+ * @param {PreToolDecision} ask
+ * @param {ToolCall} call
+ * @param {unknown} fallbackArgs
+ * @returns {Promise<PreToolDecision>}
+ */
+async function resolveAsk(ctx, ask, call, fallbackArgs) {
+  const args = decisionArguments(ask, fallbackArgs);
+  const service = typeof ctx.get === "function" ? ctx.get(APPROVALS_SERVICE) : undefined;
+  if (!service || typeof service.request !== "function") {
+    return {
+      kind: "deny",
+      reason: `工具 ${call.name} 需要审批，但没有挂载审批服务`,
+      call,
+      arguments: args,
+    };
+  }
+
+  const outcome = await service.request({
+    toolName: call.name,
+    callId: call.id,
+    arguments: args,
+    reason: ask.reason,
+  });
+
+  if (outcome === "allowed-once" || outcome === "allowed-session") {
+    return { ...ask, kind: "allow", call, arguments: args };
+  }
+  if (outcome === "rejected") {
+    return { kind: "deny", reason: `用户拒绝了工具 ${call.name}`, call, arguments: args };
+  }
+  if (outcome === "cancelled") {
+    return { kind: "deny", reason: `工具 ${call.name} 的审批被取消`, call, arguments: args };
+  }
+  return {
+    kind: "deny",
+    reason: `工具 ${call.name} 需要审批，但没有可用的审批通道`,
+    call,
+    arguments: args,
+  };
 }
 
 /**
@@ -244,6 +303,13 @@ function isDecision(decision) {
  */
 function isDeny(decision) {
   return isDecision(decision) && decision.kind === "deny";
+}
+
+/**
+ * @param {unknown} decision
+ */
+function isAsk(decision) {
+  return isDecision(decision) && decision.kind === "ask";
 }
 
 /**

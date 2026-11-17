@@ -24,6 +24,8 @@ npm test
 npm run cli -- "你好"
 ```
 
+默认会挂上 `shell`、`read`、`write`、`edit`、`list`。其中 `shell`、`write`、`edit` 在执行前会询问；可用 `--yes` 自动批准，或 `--no-approvals` 跳过审批（工具会直接执行）。这只是审批，不是完整沙箱。
+
 ## 仓库结构
 
 ```text

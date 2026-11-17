@@ -156,3 +156,15 @@ test("parseArgs 能识别 --no-tools", () => {
   assert.equal(args.noTools, true);
   assert.equal(args.message, "你好");
 });
+
+test("parseArgs 能识别 --no-approvals 和 --yes", () => {
+  const args = parseArgs(["--no-approvals", "--yes", "你好"]);
+  assert.equal(args.noApprovals, true);
+  assert.equal(args.yes, true);
+  assert.equal(args.message, "你好");
+});
+
+test("USAGE 会说明审批相关选项", () => {
+  assert.match(USAGE, /--no-approvals/);
+  assert.match(USAGE, /--yes/);
+});

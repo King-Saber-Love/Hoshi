@@ -1,5 +1,5 @@
 /**
- * CLI 的实际逻辑：解析参数、读 .env、挂上运行时、工具管线和 DeepSeek 适配器、跑一轮对话。
+ * CLI 的实际逻辑：解析参数、读 .env、挂上运行时、工具管线、审批和 DeepSeek 适配器、跑一轮对话。
  * 入口 index.js 只负责把进程的 argv / env / 标准流传进来，方便测试时注入假的 fetch。
  */
 
@@ -9,6 +9,7 @@ import { createContext } from "@hoshi/runtime";
 import { createAgent } from "@hoshi/core";
 import { SESSION_EVENT } from "@hoshi/session";
 import { tools } from "@hoshi/tools";
+import { approvals, createTerminalPrompt } from "@hoshi/approvals";
 import { shellPlugin, filesystemPlugin } from "@hoshi/plugins";
 import { llmDeepseek } from "@hoshi/llm-deepseek";
 
@@ -21,11 +22,15 @@ export const USAGE = `用法: hoshi [选项] <消息>
   --model <名称>      模型，默认 deepseek-flash
   --system <文本>     系统提示词
   --no-tools          不挂载内置 shell / 文件系统工具
+  --no-approvals      不挂载审批插件（shell / write / edit 会直接执行）
+  --yes               自动批准本次运行中的审批（危险）
 
 环境变量:
   HOSHI_DEEPSEEK_API_KEY   DeepSeek API 密钥（也可写在当前目录的 .env 里）
 
-默认会挂上 shell、read、write、edit、list，工作区是当前目录。还没有审批，也不是完整沙箱。
+默认会挂上 shell、read、write、edit、list，工作区是当前目录。
+shell、write、edit 在执行前会询问；标准输入不是终端时，没有人应答就会拒绝。
+这只是审批，不是完整沙箱。
 
 示例:
   npm run cli -- "你好"
@@ -37,6 +42,8 @@ export const USAGE = `用法: hoshi [选项] <消息>
  * @property {string | undefined} model
  * @property {string | undefined} system
  * @property {boolean} noTools
+ * @property {boolean} noApprovals
+ * @property {boolean} yes
  * @property {string} message  剩余参数用空格拼成的用户消息
  */
 
@@ -46,7 +53,15 @@ export const USAGE = `用法: hoshi [选项] <消息>
  * @returns {CliArgs}
  */
 export function parseArgs(argv) {
-  const args = { help: false, model: undefined, system: undefined, noTools: false, message: "" };
+  const args = {
+    help: false,
+    model: undefined,
+    system: undefined,
+    noTools: false,
+    noApprovals: false,
+    yes: false,
+    message: "",
+  };
   const rest = [];
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -59,6 +74,16 @@ export function parseArgs(argv) {
 
     if (token === "--no-tools") {
       args.noTools = true;
+      continue;
+    }
+
+    if (token === "--no-approvals") {
+      args.noApprovals = true;
+      continue;
+    }
+
+    if (token === "--yes") {
+      args.yes = true;
       continue;
     }
 
@@ -181,6 +206,8 @@ export async function resolveMessage(message, stdin) {
  * @property {{ write: (chunk: string) => unknown }} stdout
  * @property {{ write: (chunk: string) => unknown }} stderr
  * @property {typeof fetch} [fetch] 测试时注入假的 fetch，不会真的访问网络
+ * @property {(request: import("@hoshi/approvals").ApprovalRequest) => import("@hoshi/approvals").ApprovalOutcome | Promise<import("@hoshi/approvals").ApprovalOutcome>} [prompt]
+ *        测试时注入假的审批应答；正式运行时走终端提问。
  */
 
 /**
@@ -217,6 +244,12 @@ export async function runCli(io) {
 
   const ctx = createContext();
   ctx.plugin(tools());
+  if (!args.noApprovals) {
+    const prompt = args.yes
+      ? async () => "allowed-once"
+      : (typeof io.prompt === "function" ? io.prompt : createTerminalPrompt(io.stdin, io.stderr));
+    ctx.plugin(approvals({ prompt }));
+  }
   if (!args.noTools) {
     ctx.plugin(shellPlugin({ workspace: io.cwd }));
     ctx.plugin(filesystemPlugin({ workspace: io.cwd }));

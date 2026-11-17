@@ -21,6 +21,7 @@
     "@hoshi/session": "*",
     "@hoshi/profile": "*",
     "@hoshi/tools": "*",
+    "@hoshi/approvals": "*",
     "@hoshi/plugins": "*",
     "@hoshi/llm-deepseek": "*"
   },
