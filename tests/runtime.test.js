@@ -170,3 +170,11 @@ test("卸载仍在等待 inject 的插件时，等待会被拒绝", async () => 
   uninstall();
   await assert.rejects(() => waiting, /插件已卸载/);
 });
+
+test("get 对尚未登记的服务返回 undefined，登记后能立刻取到", () => {
+  const ctx = createContext();
+  assert.equal(ctx.get("llm"), undefined);
+  const llm = { name: "deepseek" };
+  ctx.provide("llm", llm);
+  assert.equal(ctx.get("llm"), llm);
+});

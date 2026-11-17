@@ -13,6 +13,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
  * @property {(plugin: HoshiPlugin, config?: object) => ( (() => void) | Promise<() => void> )} plugin
  * @property {(name: string, service: unknown) => () => void} provide
  * @property {(name: string) => Promise<unknown>} inject
+ * @property {(name: string) => unknown} get
  * @property {(event: string, handler: Function) => () => void} on
  * @property {(event: string, ...args: unknown[]) => Promise<void>} emit
  * @property {(event: string, ...args: unknown[]) => Promise<unknown>} waterfall
@@ -178,6 +179,17 @@ export function createContext() {
           services.delete(name);
         }
       });
+    },
+
+    /**
+     * 同步取出已经登记的服务。还没有则返回 undefined，不会等待。
+     * 需要「没有也没关系」的可选依赖时用 get；必须等到服务到来时用 inject。
+     */
+    get(name) {
+      if (typeof name !== "string" || name.length === 0) {
+        throw new Error("get 需要非空的服务名");
+      }
+      return services.has(name) ? services.get(name) : undefined;
     },
 
     /**
