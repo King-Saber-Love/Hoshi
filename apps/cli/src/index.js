@@ -2,16 +2,18 @@
 
 /**
  * Hoshi 的命令行壳。这个进程托管插件运行时，它本身不是插件。
+ * 真正的解析和一轮对话在 cli.js 里，方便测试时注入假的标准流和 fetch。
  */
-function main() {
-  const args = process.argv.slice(2);
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log("用法: hoshi [command]");
-    console.log("Hoshi 是一套插件化的 Agent 运行时。");
-    return;
-  }
 
-  console.log("Hoshi CLI 骨架已就绪，接下来实现运行时和 Agent 循环。");
-}
+import { runCli } from "./cli.js";
 
-main();
+const code = await runCli({
+  argv: process.argv.slice(2),
+  env: process.env,
+  cwd: process.cwd(),
+  stdin: process.stdin,
+  stdout: process.stdout,
+  stderr: process.stderr,
+});
+
+process.exit(code);

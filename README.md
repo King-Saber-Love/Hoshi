@@ -16,7 +16,12 @@ Hoshi 是一套插件化的 Agent 运行时。一个 Node 核心，外挂 CLI、
 ```bash
 npm install
 npm test
-npm run cli
+```
+
+复制 `.env.example` 为 `.env`，填入 `HOSHI_DEEPSEEK_API_KEY` 后，可以跑一轮对话：
+
+```bash
+npm run cli -- "你好"
 ```
 
 ## 仓库结构
