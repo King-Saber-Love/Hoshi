@@ -12,6 +12,7 @@ import { tools } from "@hoshi/tools";
 import { approvals, createTerminalPrompt } from "@hoshi/approvals";
 import { shellPlugin, filesystemPlugin } from "@hoshi/plugins";
 import { llmDeepseek } from "@hoshi/llm-deepseek";
+import { mcp } from "@hoshi/mcp";
 import {
   applyProfile,
   createDefaultProfile,
@@ -52,6 +53,7 @@ export const CLI_PLUGIN_CATALOG = {
   approvals,
   shell: shellPlugin,
   filesystem: filesystemPlugin,
+  mcp,
   "llm-deepseek": llmDeepseek,
 };
 
@@ -296,6 +298,9 @@ export async function runCli(io) {
         }
         if (name === "shell" || name === "filesystem") {
           return { ...config, workspace: config.workspace ?? io.cwd };
+        }
+        if (name === "mcp") {
+          return { ...config, cwd: config.cwd ?? io.cwd };
         }
         if (name === "llm-deepseek") {
           return {

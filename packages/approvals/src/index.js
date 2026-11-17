@@ -21,6 +21,7 @@ export const APPROVAL_EVENT = {
 };
 
 /** 默认需要询问的工具：会改环境或写文件的那几个。read / list 默认放行。 */
+/** 默认要询问的工具名。名字以 mcp__ 开头的外部工具，在未显式指定 tools 时也会问。 */
 export const DEFAULT_ASK_TOOLS = ["shell", "write", "edit"];
 
 /** @typedef {"ask" | "never"} ApprovalPolicy */
@@ -61,7 +62,7 @@ export const APPROVAL_OUTCOMES = /** @type {const} */ ([
  *
  * @param {object} [config]
  * @param {ApprovalPolicy} [config.policy] 默认 "ask"。传 "never" 则一律拒绝需要审批的调用。
- * @param {string[] | "all"} [config.tools] 需要询问的工具名，默认 shell / write / edit。传 "all" 表示全部都问。
+ * @param {string[] | "all"} [config.tools] 需要询问的工具名，默认 shell / write / edit，以及 mcp__ 前缀的外部工具。传 "all" 表示全部都问。传入数组则完全按数组来。
  * @param {(request: ApprovalRequest) => ApprovalOutcome | Promise<ApprovalOutcome>} [config.prompt]
  *        应答函数。CLI 会传入终端提问，测试可以注入假的函数。
  * @returns {import("@hoshi/runtime").HoshiPlugin}
@@ -69,6 +70,7 @@ export const APPROVAL_OUTCOMES = /** @type {const} */ ([
 export function approvals(config = {}) {
   const policy = normalizePolicy(config.policy);
   const askTools = normalizeAskTools(config.tools);
+  const askMcpByDefault = config.tools === undefined;
   const prompt = config.prompt;
 
   return (ctx) => {
@@ -100,7 +102,7 @@ export function approvals(config = {}) {
     ctx.on(TOOL_EVENT.PRE_EXECUTE, (decision) => {
       if (!isAllow(decision)) return decision;
       const name = decision.call && typeof decision.call.name === "string" ? decision.call.name : "";
-      if (!name || !needsAsk(askTools, name)) return decision;
+      if (!name || !needsAsk(askTools, name, askMcpByDefault)) return decision;
       if (sessionAllow.has(name)) return decision;
       return {
         ...decision,
@@ -221,8 +223,10 @@ function normalizeAskTools(value) {
  * @param {Set<string> | "all"} askTools
  * @param {string} name
  */
-function needsAsk(askTools, name) {
-  return askTools === "all" || askTools.has(name);
+function needsAsk(askTools, name, askMcpByDefault = false) {
+  if (askTools === "all" || askTools.has(name)) return true;
+  // 用户没改名单时，外部 MCP 工具默认也要先问；显式传入数组则完全听用户的。
+  return Boolean(askMcpByDefault && name.startsWith("mcp__"));
 }
 
 /**

@@ -23,6 +23,7 @@
     "@hoshi/tools": "*",
     "@hoshi/approvals": "*",
     "@hoshi/plugins": "*",
+    "@hoshi/mcp": "*",
     "@hoshi/llm-deepseek": "*"
   },
   "bin": {

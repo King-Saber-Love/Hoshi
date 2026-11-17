@@ -215,3 +215,23 @@ test("找不到插件或工厂返回值不是函数时，要给出明确错误",
     /没有返回可挂载的插件函数/,
   );
 });
+
+test("applyProfile 会等异步插件完成后再返回", async () => {
+  let started = false;
+  let finished = false;
+  const slow = () => async (ctx) => {
+    started = true;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    finished = true;
+    ctx.provide("slow", true);
+  };
+  const ctx = createContext();
+  const applying = applyProfile(ctx, {
+    plugins: [{ plugin: "slow", config: {}, disabled: false }],
+  }, { catalog: { slow } });
+  assert.equal(finished, false);
+  await applying;
+  assert.equal(started, true);
+  assert.equal(finished, true);
+  assert.equal(ctx.get("slow"), true);
+});

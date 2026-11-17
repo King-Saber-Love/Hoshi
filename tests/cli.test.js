@@ -244,3 +244,8 @@ test("非法的 hoshi.yml 会以用法错误退出", async () => {
   assert.equal(code, 1);
   assert.match(captured.captured().stderr, /无法解析 profile YAML/);
 });
+
+test("CLI 的插件对照表里有 mcp", async () => {
+  const { CLI_PLUGIN_CATALOG } = await import("../apps/cli/src/cli.js");
+  assert.equal(typeof CLI_PLUGIN_CATALOG.mcp, "function");
+});

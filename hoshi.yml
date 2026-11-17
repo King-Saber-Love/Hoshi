@@ -6,4 +6,10 @@ plugins:
   - plugin: approvals
   - plugin: shell
   - plugin: filesystem
+  # 要接 MCP 服务器时取消注释，或再复制一段改 serverName。
+  # - plugin: mcp
+  #   config:
+  #     serverName: filesystem
+  #     command: npx
+  #     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
   - plugin: llm-deepseek

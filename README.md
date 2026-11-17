@@ -28,6 +28,8 @@ npm run cli -- "你好"
 
 要增减插件，改仓库根目录的 `hoshi.yml` 即可，不必改 CLI 代码。也可用 `--profile 路径` 指定另一份配置。没有这个文件时，CLI 会使用内置的默认组合。
 
+要接 MCP 服务器，在 `hoshi.yml` 里加一项 `plugin: mcp`，填写 `serverName` 和 `command`（stdio）或 `url`（HTTP）。发现的工具会以 `mcp__服务器名__原名` 登记到工具管线，默认执行前会询问。
+
 ## 仓库结构
 
 ```text

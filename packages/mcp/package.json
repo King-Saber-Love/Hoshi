@@ -16,7 +16,8 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@hoshi/runtime": "*",
     "@hoshi/tools": "*",
-    "@hoshi/runtime": "*"
+    "@modelcontextprotocol/client": "^2.4.0"
   }
 }

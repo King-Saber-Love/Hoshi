@@ -215,7 +215,11 @@ export async function applyProfile(ctx, profile, options = {}) {
     if (typeof plugin !== "function") {
       throw new Error(`插件 "${entry.plugin}" 的工厂函数没有返回可挂载的插件函数`);
     }
-    ctx.plugin(plugin);
+    // 异步插件（比如 MCP 要先连上服务器再登记工具）会从 plugin() 得到 Promise，必须等它完成。
+    const installed = ctx.plugin(plugin);
+    if (installed && typeof installed.then === "function") {
+      await installed;
+    }
     mounted.push(entry.plugin);
   }
 
